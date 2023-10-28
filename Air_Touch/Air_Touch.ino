@@ -4,21 +4,37 @@
  */
 #include <BleAbsMouse.h>
 #include <math.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <string.h>
 
-BleAbsMouse bleAbsMouse;
+#define BNO055_SAMPLERATE_DELAY_MS (100)
+Adafruit_BNO055 bno = Adafruit_BNO055(55);
+BleAbsMouse bleAbsMouse("Air Touch", "Norange", 100);
+double baudRate = 115200;
 int state=0; // 0: default; 1: calibration corner1; 2: calibration corner2; 3: cursor calibration
-bool prevBtnState = 0;
+bool prevBtnVal = 0;
+
+double vel_x = 0;
+double vel_y = 0;
+double vel_z = 0;
+
+double oldD_x =0;
+double oldD_y =0;
+double oldD_z =0;
 
 double endEffector_x = 0;
 double endEffector_y = 0;
 double endEffector_z = 0;
 
-double origin_x = 0;
-double origin_y = 0;
-double origin_z = 0;
+long elapsedTime;
+long lastCheckPoint=0;
+
+double oldVel_x, oldVel_y, oldVel_z =0;
 
 bool mouseIsEnabled(){
-  return digitalRead(19)==1;
+  return digitalRead(19)==HIGH;
 }
 
 double magnitude(double x, double y, double z){
@@ -46,28 +62,76 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
   bleAbsMouse.begin();
-  pinMode(18, INPUT_PULLUP);
-  pinMode(14, INPUT_PULLUP);
+  pinMode(18, OUTPUT);
+  pinMode(14, OUTPUT);
+  digitalWrite(18, HIGH);
+  digitalWrite(14, HIGH);
+  pinMode(27, INPUT);
+  pinMode(19, INPUT);
+  Wire.begin(); 
+  if(!bno.begin())
+  {
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
 }
 
 void loop() {
-  if(mouseIsEnabled()){
-    if(bleAbsMouse.isConnected()) {
-      //Serial.println("Click");
-      //bleAbsMouse.click(5000, 5000);
-      
-    }
-    if(prevBtnState==0 && digitalRead(27)==1){
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  imu::Vector<3> accel_value = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  if(mouseIsEnabled() && bleAbsMouse.isConnected()){
+    
+    //Serial.println("Click");
+    //bleAbsMouse.click(5000, 5000);
+    elapsedTime = (micros()-lastCheckPoint);
+    lastCheckPoint = micros(); // update last check point  
+
+    vel_x = oldVel_x + elapsedTime*accel_value.x();
+    vel_y = oldVel_y + elapsedTime*accel_value.y();
+    vel_z = oldVel_z + elapsedTime*accel_value.z();
+    Serial.println(accel_value.y());
+
+    //update oldVel variables
+    oldVel_x = vel_x;
+    oldVel_y = vel_y;
+    oldVel_z = vel_z;
+
+    endEffector_x = oldD_x + elapsedTime*vel_x;
+    endEffector_y = oldD_y + elapsedTime*vel_y;
+    endEffector_z = oldD_z + elapsedTime*vel_z;
+
+    //update oldD variables
+    oldD_x = endEffector_x;
+    oldD_y = endEffector_y;
+    oldD_z = endEffector_z;
+
+    if(prevBtnVal==0 && digitalRead(27)==HIGH){ // if calibration button was pushed
+      if(state==1){
+        endEffector_x = 0;
+        endEffector_y = 0;
+        endEffector_z = 0;
+      }
+      else if(state==2){
+        //something
+      }
+      else if(state==3){
+        //something
+      }
+      else if(state==4){
+        //something
+      }
       state++;
-      prevBtnState=1;
+      prevBtnVal=1;
       if(state==5){
         state=0;
       }
     }
-    else if(digitalRead(27)==0){
-      prevBtnState=0;
+    if(digitalRead(27)==LOW){
+      prevBtnVal=0;
     }
     Serial.println(state);
+    Serial.println(String(endEffector_x)+" | "+String(endEffector_y)+" | "+String(endEffector_z));
     //delay(2000);
   }
 }
