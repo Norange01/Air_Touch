@@ -79,7 +79,7 @@ void setup() {
 
 void loop() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  imu::Vector<3> accel_value = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+  imu::Vector<3> accel_value = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
   if(mouseIsEnabled() && bleAbsMouse.isConnected()){
     
     //Serial.println("Click");
@@ -87,10 +87,13 @@ void loop() {
     elapsedTime = (micros()-lastCheckPoint);
     lastCheckPoint = micros(); // update last check point  
 
-    vel_x = oldVel_x + elapsedTime*accel_value.x();
-    vel_y = oldVel_y + elapsedTime*accel_value.y();
-    vel_z = oldVel_z + elapsedTime*accel_value.z();
-    Serial.println(accel_value.y());
+    if(magnitude(accel_value.x(), accel_value.y(), accel_value.z())>0.3){
+      vel_x = oldVel_x + elapsedTime*accel_value.x()/1000000;
+      vel_y = oldVel_y + elapsedTime*accel_value.y()/1000000;
+      vel_z = oldVel_z + elapsedTime*accel_value.z()/1000000;
+    }
+    else{ vel_x =0; vel_y = 0; vel_z = 0;}
+    Serial.println(accel_value.z());
 
     //update oldVel variables
     oldVel_x = vel_x;
@@ -132,6 +135,7 @@ void loop() {
     }
     Serial.println(state);
     Serial.println(String(endEffector_x)+" | "+String(endEffector_y)+" | "+String(endEffector_z));
+    bleAbsMouse.move(endEffector_y, endEffector_z);
     //delay(2000);
   }
 }
