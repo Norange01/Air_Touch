@@ -2,6 +2,11 @@
  * This example turns the ESP32 into a Bluetooth LE Absolute Mouse that clicks
  * the center of the screen every 2 seconds.
  */
+
+ //max x value is 359 deg
+ //max y value is 89 deg
+ //max z value is 179 deg
+
 #include <BleAbsMouse.h>
 #include <math.h>
 #include <Wire.h>
@@ -15,6 +20,9 @@ BleAbsMouse bleAbsMouse("Air Touch", "Norange", 100);
 double baudRate = 115200;
 int state=0; // 0: default; 1: calibration corner1; 2: calibration corner2; 3: cursor calibration
 bool prevBtnVal = 0;
+
+int xRes = 3840;
+int yRes = 2160;
 
 double endEffector_x = 0;
 double endEffector_y = 0;
@@ -74,9 +82,9 @@ void loop() {
     //Serial.println("Click");
     //bleAbsMouse.click(5000, 5000);
     
-    endEffector_x = euler.x()*100;
-    endEffector_y = 9000+euler.y()*100;
-    endEffector_z = 9000+euler.z()*100;
+    endEffector_x = floor(euler.x()*3840/359);
+    endEffector_y = floor((euler.y()+90)*2160/179);
+    endEffector_z = euler.z();
 
 
     if(prevBtnVal==0 && digitalRead(27)==HIGH){ // if calibration button was pushed
