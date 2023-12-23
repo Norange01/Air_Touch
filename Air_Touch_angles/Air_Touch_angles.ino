@@ -7,7 +7,8 @@
  //max y value is 89 deg
  //max z value is 179 deg
 
-#include <BleAbsMouse.h>
+//#include <BleAbsMouse.h>
+#include <BleMouse.h>
 #include <math.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -16,7 +17,7 @@
 
 #define BNO055_SAMPLERATE_DELAY_MS (100)
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
-BleAbsMouse bleAbsMouse("Air Touch", "Norange", 100);
+BleMouse bleMouse("Air Touch", "Norange", 100);
 double baudRate = 115200;
 int state=0; // 0: default; 1: calibration corner1; 2: calibration corner2; 3: cursor calibration
 bool prevBtnVal = 0;
@@ -24,14 +25,23 @@ bool prevBtnVal = 0;
 int xRes = 3840;
 int yRes = 2160;
 
-double endEffector_x = 0;
-double endEffector_y = 0;
-double endEffector_z = 0;
+int endEffector_x = 0;
+int endEffector_y = 0;
+int endEffector_z = 0;
+
+int currentPos_x = 0;
+int currentPos_y = 0;
 
 long lastCheckPoint=0;
 
 bool mouseIsEnabled(){
   return digitalRead(19)==HIGH;
+}
+
+void updatePos(){
+  bleMouse.move(endEffector_x-currentPos_x,endEffector_y-currentPos_y);
+  currentPos_x=endEffector_x;
+  currentPos_y=endEffector_y;
 }
 
 double magnitude(double x, double y, double z){
@@ -58,7 +68,7 @@ void toUnitVect(double &new_x, double &new_y, double &new_z, double x, double y,
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
-  bleAbsMouse.begin();
+  bleMouse.begin();
   pinMode(18, OUTPUT);
   pinMode(14, OUTPUT);
   digitalWrite(18, HIGH);
@@ -77,13 +87,13 @@ void setup() {
 void loop() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   imu::Vector<3> accel_value = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
-  if(mouseIsEnabled() && bleAbsMouse.isConnected()){
+  if(mouseIsEnabled() && bleMouse.isConnected()){
     
     //Serial.println("Click");
-    //bleAbsMouse.click(5000, 5000);
+    //bleMouse.click(5000, 5000);
     
-    endEffector_x = floor(euler.x()*3840/359);
-    endEffector_y = floor((euler.y()+90)*2160/179);
+    endEffector_x = -180+floor((euler.x()-180)*3840/359);
+    endEffector_y = -90+floor(euler.y()*2160/179);
     endEffector_z = euler.z();
 
 
@@ -113,7 +123,7 @@ void loop() {
     }
     Serial.println(state);
     Serial.println(String(endEffector_x)+" | "+String(endEffector_y)+" | "+String(endEffector_z));
-    bleAbsMouse.move(abs(endEffector_x), abs(endEffector_y));
-    //delay(2000);
+    updatePos();
+    delay(5);
   }
 }
