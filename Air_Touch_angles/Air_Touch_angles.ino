@@ -22,15 +22,29 @@ double baudRate = 115200;
 int state=0; // 0: default; 1: calibration corner1; 2: calibration corner2; 3: cursor calibration
 bool prevBtnVal = 0;
 
-int xRes = 3840;
-int yRes = 2160;
+float xRes = 3840;
+float yRes = 2160;
 
-int endEffector_x = 0;
-int endEffector_y = 0;
-int endEffector_z = 0;
+float xMultiplier = xRes/359;
+float yMultiplier = yRes/179;
 
-int currentPos_x = 0;
-int currentPos_y = 0;
+float angle_x_origin=0;
+float angle_y_origin=0;
+float angle_z_origin=0;
+
+float angle_x_end=359;
+float angle_y_end=179;
+float angle_z_end=0;
+
+float angle_x = 0;
+float angle_y = 0;
+float angle_z = 0;
+
+float relevantAngle_x=0;
+float relevantAngle_y=0;
+
+int currentPixel_x = 0;
+int currentPixel_y = 0;
 
 long lastCheckPoint=0;
 
@@ -38,10 +52,28 @@ bool mouseIsEnabled(){
   return digitalRead(19)==HIGH;
 }
 
+bool btnIsPressed(){
+  return (digitalRead(27)==LOW);
+}
+
 void updatePos(){
-  bleMouse.move(endEffector_x-currentPos_x,endEffector_y-currentPos_y);
-  currentPos_x=endEffector_x;
-  currentPos_y=endEffector_y;
+  if(angle_x>=angle_x_origin && angle_y>=angle_y_origin && angle_x<=angle_x_end && angle_y<=angle_y_end){
+    bleMouse.move(int(relevantAngle_x*xMultiplier)-currentPixel_x,int(relevantAngle_y*yMultiplier)-currentPixel_y);
+    currentPixel_x+=(relevantAngle_x*xMultiplier);
+    currentPixel_y+=(relevantAngle_y*yMultiplier);
+    if(currentPixel_x<0){
+      currentPixel_x=0;
+    }
+    if(currentPixel_y<0){
+      currentPixel_y=0;
+    }
+    if(currentPixel_x>xRes){
+      currentPixel_x=xRes;
+    }
+    if(currentPixel_y>yRes){
+      currentPixel_y=yRes;
+    }
+  }
 }
 
 double magnitude(double x, double y, double z){
@@ -70,9 +102,7 @@ void setup() {
   Serial.println("Starting BLE work!");
   bleMouse.begin();
   pinMode(18, OUTPUT);
-  pinMode(14, OUTPUT);
   digitalWrite(18, HIGH);
-  digitalWrite(14, HIGH);
   pinMode(27, INPUT);
   pinMode(19, INPUT);
   Wire.begin(); 
@@ -92,19 +122,31 @@ void loop() {
     //Serial.println("Click");
     //bleMouse.click(5000, 5000);
     
-    endEffector_x = -180+floor((euler.x()-180)*3840/359);
-    endEffector_y = -90+floor(euler.y()*2160/179);
-    endEffector_z = euler.z();
+    angle_x = euler.x();
+    angle_y = 90+euler.y();
+    angle_z = euler.z();
+
+    relevantAngle_x = angle_x-(angle_x_origin+(abs(angle_x_end-angle_x_origin)/2));
+    relevantAngle_y = angle_y-(angle_y_origin+(abs(angle_y_end-angle_y_origin)/2));
 
 
-    if(prevBtnVal==0 && digitalRead(27)==HIGH){ // if calibration button was pushed
+    if(prevBtnVal==0 && btnIsPressed()){ // if calibration button was pushed
       if(state==1){
-        endEffector_x = 0;
-        endEffector_y = 0;
-        endEffector_z = 0;
+        angle_x_origin = angle_x;
+        angle_y_origin = angle_y;
+        angle_z_origin = angle_z;
+        bleMouse.move(-currentPixel_x,-currentPixel_y);
+        currentPixel_x=0;
+        currentPixel_y=0;
       }
       else if(state==2){
-        //something
+        angle_x_end=angle_x;
+        angle_y_end=angle_y;
+        bleMouse.move(xRes-currentPixel_x,yRes-currentPixel_y);
+        currentPixel_x=xRes;
+        currentPixel_y=yRes;
+        xMultiplier=xRes/abs(angle_x_end-angle_x_origin);
+        yMultiplier=yRes/abs(angle_y_end-angle_y_origin);
       }
       else if(state==3){
         //something
@@ -118,12 +160,15 @@ void loop() {
         state=0;
       }
     }
-    if(digitalRead(27)==LOW){
+    if(!btnIsPressed()){
       prevBtnVal=0;
     }
     Serial.println(state);
-    Serial.println(String(endEffector_x)+" | "+String(endEffector_y)+" | "+String(endEffector_z));
+    Serial.println(String(angle_x)+" | "+String(angle_y)+" | "+String(angle_z));
+    Serial.println(String(relevantAngle_x)+" | "+String(relevantAngle_y));
+    Serial.println("Multipliers: "+String(xMultiplier)+" | "+String(yMultiplier));
+    Serial.println("currentPixel: "+String(currentPixel_x)+" | "+String(currentPixel_y));
     updatePos();
-    delay(5);
+    delay(10);
   }
 }
