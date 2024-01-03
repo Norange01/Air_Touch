@@ -59,8 +59,8 @@ bool btnIsPressed(){
 void updatePos(){
   if(angle_x>=angle_x_origin && angle_y>=angle_y_origin && angle_x<=angle_x_end && angle_y<=angle_y_end){
     bleMouse.move(int(relevantAngle_x*xMultiplier)-currentPixel_x,int(relevantAngle_y*yMultiplier)-currentPixel_y);
-    currentPixel_x+=(relevantAngle_x*xMultiplier);
-    currentPixel_y+=(relevantAngle_y*yMultiplier);
+    currentPixel_x=(relevantAngle_x*xMultiplier);
+    currentPixel_y=(relevantAngle_y*yMultiplier);
     if(currentPixel_x<0){
       currentPixel_x=0;
     }
@@ -126,12 +126,12 @@ void loop() {
     angle_y = 90+euler.y();
     angle_z = euler.z();
 
-    relevantAngle_x = angle_x-(angle_x_origin+(abs(angle_x_end-angle_x_origin)/2));
-    relevantAngle_y = angle_y-(angle_y_origin+(abs(angle_y_end-angle_y_origin)/2));
+    relevantAngle_x = angle_x-(angle_x_origin+(abs(angle_x_end-angle_x_origin)/2)); //correct
+    relevantAngle_y = angle_y-(angle_y_origin+(abs(angle_y_end-angle_y_origin)/2)); //correct
 
 
     if(prevBtnVal==0 && btnIsPressed()){ // if calibration button was pushed
-      if(state==1){
+      if(state==0){
         angle_x_origin = angle_x;
         angle_y_origin = angle_y;
         angle_z_origin = angle_z;
@@ -139,7 +139,7 @@ void loop() {
         currentPixel_x=0;
         currentPixel_y=0;
       }
-      else if(state==2){
+      else if(state==1){
         angle_x_end=angle_x;
         angle_y_end=angle_y;
         bleMouse.move(xRes-currentPixel_x,yRes-currentPixel_y);
@@ -148,15 +148,15 @@ void loop() {
         xMultiplier=xRes/abs(angle_x_end-angle_x_origin);
         yMultiplier=yRes/abs(angle_y_end-angle_y_origin);
       }
-      else if(state==3){
+      else if(state==2){
         //something
       }
-      else if(state==4){
+      else if(state==3){
         //something
       }
       state++;
       prevBtnVal=1;
-      if(state==5){
+      if(state==4){
         state=0;
       }
     }
