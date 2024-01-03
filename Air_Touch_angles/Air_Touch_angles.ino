@@ -57,8 +57,16 @@ bool btnIsPressed(){
 }
 
 void updatePos(){
-  if(angle_x>=angle_x_origin && angle_y>=angle_y_origin && angle_x<=angle_x_end && angle_y<=angle_y_end){
-    bleMouse.move(int(relevantAngle_x*xMultiplier)-currentPixel_x,int(relevantAngle_y*yMultiplier)-currentPixel_y);
+  //if(angle_x>=angle_x_origin && angle_y>=angle_y_origin && angle_x<=angle_x_end && angle_y<=angle_y_end){
+    int xMov=int(relevantAngle_x*xMultiplier)-currentPixel_x;
+    int yMov=int(relevantAngle_y*yMultiplier)-currentPixel_y;
+    if(angle_x<angle_x_origin || angle_x>angle_x_end){
+      xMov=0;
+    }
+    if(angle_y<angle_y_origin || angle_y>angle_y_end){
+      yMov=0;
+    }
+    bleMouse.move(xMov,yMov);
     currentPixel_x=(relevantAngle_x*xMultiplier);
     currentPixel_y=(relevantAngle_y*yMultiplier);
     if(currentPixel_x<0){
@@ -73,7 +81,7 @@ void updatePos(){
     if(currentPixel_y>yRes){
       currentPixel_y=yRes;
     }
-  }
+  //}
 }
 
 double magnitude(double x, double y, double z){
